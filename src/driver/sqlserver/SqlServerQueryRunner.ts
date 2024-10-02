@@ -1,11 +1,12 @@
 import { ObjectLiteral } from "../../common/ObjectLiteral"
-import { QueryResult } from "../../query-runner/QueryResult"
+import { TypeORMError } from "../../error"
 import { QueryFailedError } from "../../error/QueryFailedError"
 import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
 import { TransactionNotStartedError } from "../../error/TransactionNotStartedError"
-import { ColumnType } from "../types/ColumnTypes"
 import { ReadStream } from "../../platform/PlatformTools"
 import { BaseQueryRunner } from "../../query-runner/BaseQueryRunner"
+import { QueryLock } from "../../query-runner/QueryLock"
+import { QueryResult } from "../../query-runner/QueryResult"
 import { QueryRunner } from "../../query-runner/QueryRunner"
 import { TableIndexOptions } from "../../schema-builder/options/TableIndexOptions"
 import { Table } from "../../schema-builder/table/Table"
@@ -17,17 +18,16 @@ import { TableIndex } from "../../schema-builder/table/TableIndex"
 import { TableUnique } from "../../schema-builder/table/TableUnique"
 import { View } from "../../schema-builder/view/View"
 import { Broadcaster } from "../../subscriber/Broadcaster"
+import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
+import { InstanceChecker } from "../../util/InstanceChecker"
 import { OrmUtils } from "../../util/OrmUtils"
 import { Query } from "../Query"
+import { ColumnType } from "../types/ColumnTypes"
 import { IsolationLevel } from "../types/IsolationLevel"
+import { MetadataTableType } from "../types/MetadataTableType"
+import { ReplicationMode } from "../types/ReplicationMode"
 import { MssqlParameter } from "./MssqlParameter"
 import { SqlServerDriver } from "./SqlServerDriver"
-import { ReplicationMode } from "../types/ReplicationMode"
-import { TypeORMError } from "../../error"
-import { QueryLock } from "../../query-runner/QueryLock"
-import { MetadataTableType } from "../types/MetadataTableType"
-import { InstanceChecker } from "../../util/InstanceChecker"
-import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
 
 /**
  * Runs queries on a single SQL Server database connection.
@@ -219,6 +219,8 @@ export class SqlServerQueryRunner
                 query,
                 parameters,
             )
+
+            await broadcasterResult.wait()
 
             const pool = await (this.mode === "slave"
                 ? this.driver.obtainSlaveConnection()
@@ -797,7 +799,7 @@ export class SqlServerQueryRunner
         const oldTable = InstanceChecker.isTable(oldTableOrName)
             ? oldTableOrName
             : await this.getCachedTable(oldTableOrName)
-        let newTable = oldTable.clone()
+        const newTable = oldTable.clone()
 
         // we need database name and schema name to rename FK constraints
         let dbName: string | undefined = undefined
@@ -2635,7 +2637,7 @@ export class SqlServerQueryRunner
         const isAnotherTransactionActive = this.isTransactionActive
         if (!isAnotherTransactionActive) await this.startTransaction()
         try {
-            let allViewsSql = database
+            const allViewsSql = database
                 ? `SELECT * FROM "${database}"."INFORMATION_SCHEMA"."VIEWS"`
                 : `SELECT * FROM "INFORMATION_SCHEMA"."VIEWS"`
             const allViewsResults: ObjectLiteral[] = await this.query(
@@ -2650,7 +2652,7 @@ export class SqlServerQueryRunner
                 }),
             )
 
-            let allTablesSql = database
+            const allTablesSql = database
                 ? `SELECT * FROM "${database}"."INFORMATION_SCHEMA"."TABLES" WHERE "TABLE_TYPE" = 'BASE TABLE'`
                 : `SELECT * FROM "INFORMATION_SCHEMA"."TABLES" WHERE "TABLE_TYPE" = 'BASE TABLE'`
             const allTablesResults: ObjectLiteral[] = await this.query(
@@ -3748,7 +3750,7 @@ export class SqlServerQueryRunner
         table: Table,
         indexOrName: TableIndex | string,
     ): Query {
-        let indexName = InstanceChecker.isTableIndex(indexOrName)
+        const indexName = InstanceChecker.isTableIndex(indexOrName)
             ? indexOrName.name
             : indexOrName
         return new Query(

@@ -1,11 +1,11 @@
-import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
 import { QueryFailedError } from "../../error/QueryFailedError"
-import { AbstractSqliteQueryRunner } from "../sqlite-abstract/AbstractSqliteQueryRunner"
+import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
 import { TransactionNotStartedError } from "../../error/TransactionNotStartedError"
-import { ExpoDriver } from "./ExpoDriver"
-import { Broadcaster } from "../../subscriber/Broadcaster"
 import { QueryResult } from "../../query-runner/QueryResult"
+import { Broadcaster } from "../../subscriber/Broadcaster"
 import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
+import { AbstractSqliteQueryRunner } from "../sqlite-abstract/AbstractSqliteQueryRunner"
+import { ExpoDriver } from "./ExpoDriver"
 
 // Needed to satisfy the Typescript compiler
 interface IResultSet {
@@ -174,6 +174,8 @@ export class ExpoQueryRunner extends AbstractSqliteQueryRunner {
                 parameters,
             )
 
+            await broadcasterResult.wait()
+
             const queryStartTime = +new Date()
             // All Expo SQL queries are executed in a transaction context
             databaseConnection.transaction(
@@ -223,7 +225,7 @@ export class ExpoQueryRunner extends AbstractSqliteQueryRunner {
                             }
 
                             if (raw?.hasOwnProperty("rows")) {
-                                let resultSet = []
+                                const resultSet = []
                                 for (let i = 0; i < raw.rows.length; i++) {
                                     resultSet.push(raw.rows.item(i))
                                 }

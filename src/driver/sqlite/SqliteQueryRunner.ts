@@ -1,12 +1,12 @@
-import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
+import { ConnectionIsNotSetError } from "../../error/ConnectionIsNotSetError"
 import { QueryFailedError } from "../../error/QueryFailedError"
+import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
+import { QueryResult } from "../../query-runner/QueryResult"
+import { Broadcaster } from "../../subscriber/Broadcaster"
+import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
 import { AbstractSqliteQueryRunner } from "../sqlite-abstract/AbstractSqliteQueryRunner"
 import { SqliteConnectionOptions } from "./SqliteConnectionOptions"
 import { SqliteDriver } from "./SqliteDriver"
-import { Broadcaster } from "../../subscriber/Broadcaster"
-import { ConnectionIsNotSetError } from "../../error/ConnectionIsNotSetError"
-import { QueryResult } from "../../query-runner/QueryResult"
-import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
 
 /**
  * Runs queries on a single sqlite database connection.
@@ -75,6 +75,9 @@ export class SqliteQueryRunner extends AbstractSqliteQueryRunner {
             try {
                 const databaseConnection = await this.connect()
                 this.driver.connection.logger.logQuery(query, parameters, this)
+
+                await broadcasterResult.wait()
+
                 const queryStartTime = +new Date()
                 const isInsertQuery = query.startsWith("INSERT ")
                 const isDeleteQuery = query.startsWith("DELETE ")

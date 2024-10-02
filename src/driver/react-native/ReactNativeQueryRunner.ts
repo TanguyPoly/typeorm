@@ -1,11 +1,11 @@
 import { ObjectLiteral } from "../../common/ObjectLiteral"
-import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
 import { QueryFailedError } from "../../error/QueryFailedError"
+import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
+import { QueryResult } from "../../query-runner/QueryResult"
+import { Broadcaster } from "../../subscriber/Broadcaster"
+import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
 import { AbstractSqliteQueryRunner } from "../sqlite-abstract/AbstractSqliteQueryRunner"
 import { ReactNativeDriver } from "./ReactNativeDriver"
-import { Broadcaster } from "../../subscriber/Broadcaster"
-import { QueryResult } from "../../query-runner/QueryResult"
-import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
 
 /**
  * Runs queries on a single sqlite database connection.
@@ -63,6 +63,8 @@ export class ReactNativeQueryRunner extends AbstractSqliteQueryRunner {
                 parameters,
             )
 
+            await broadcasterResult.wait()
+
             const queryStartTime = +new Date()
             databaseConnection.executeSql(
                 query,
@@ -105,7 +107,7 @@ export class ReactNativeQueryRunner extends AbstractSqliteQueryRunner {
                     }
 
                     if (raw?.hasOwnProperty("rows")) {
-                        let records = []
+                        const records = []
                         for (let i = 0; i < raw.rows.length; i++) {
                             records.push(raw.rows.item(i))
                         }

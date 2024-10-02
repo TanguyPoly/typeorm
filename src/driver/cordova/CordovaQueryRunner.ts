@@ -1,12 +1,12 @@
 import { ObjectLiteral } from "../../common/ObjectLiteral"
-import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
+import { TypeORMError } from "../../error"
 import { QueryFailedError } from "../../error/QueryFailedError"
+import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
+import { QueryResult } from "../../query-runner/QueryResult"
+import { Broadcaster } from "../../subscriber/Broadcaster"
+import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
 import { AbstractSqliteQueryRunner } from "../sqlite-abstract/AbstractSqliteQueryRunner"
 import { CordovaDriver } from "./CordovaDriver"
-import { Broadcaster } from "../../subscriber/Broadcaster"
-import { TypeORMError } from "../../error"
-import { QueryResult } from "../../query-runner/QueryResult"
-import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
 
 /**
  * Runs queries on a single sqlite database connection.
@@ -62,6 +62,8 @@ export class CordovaQueryRunner extends AbstractSqliteQueryRunner {
             parameters,
         )
 
+        await broadcasterResult.wait()
+
         const queryStartTime = +new Date()
 
         try {
@@ -107,7 +109,7 @@ export class CordovaQueryRunner extends AbstractSqliteQueryRunner {
             if (query.substr(0, 11) === "INSERT INTO") {
                 result.raw = raw.insertId
             } else {
-                let resultSet = []
+                const resultSet = []
                 for (let i = 0; i < raw.rows.length; i++) {
                     resultSet.push(raw.rows.item(i))
                 }
