@@ -17,6 +17,7 @@ import { TableIndex } from "../../schema-builder/table/TableIndex"
 import { TableUnique } from "../../schema-builder/table/TableUnique"
 import { View } from "../../schema-builder/view/View"
 import { Broadcaster } from "../../subscriber/Broadcaster"
+import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
 import { InstanceChecker } from "../../util/InstanceChecker"
 import { OrmUtils } from "../../util/OrmUtils"
 import { VersionUtils } from "../../util/VersionUtils"
@@ -26,7 +27,6 @@ import { IsolationLevel } from "../types/IsolationLevel"
 import { MetadataTableType } from "../types/MetadataTableType"
 import { ReplicationMode } from "../types/ReplicationMode"
 import { PostgresDriver } from "./PostgresDriver"
-import { BroadcasterResult } from "../../subscriber/BroadcasterResult"
 
 /**
  * Runs queries on a single postgres database connection.
@@ -254,6 +254,8 @@ export class PostgresQueryRunner
             query,
             parameters,
         )
+
+        await broadcasterResult.wait()
 
         try {
             const queryStartTime = +new Date()
@@ -601,10 +603,22 @@ export class PostgresQueryRunner
                 downQueries.push(this.dropIndexSql(table, index))
             })
         }
-        
+
         if (table.comment) {
-            upQueries.push(new Query("COMMENT ON TABLE " + this.escapePath(table) + " IS '" + table.comment + "'"));
-            downQueries.push(new Query("COMMENT ON TABLE " + this.escapePath(table) + " IS NULL"));
+            upQueries.push(
+                new Query(
+                    "COMMENT ON TABLE " +
+                        this.escapePath(table) +
+                        " IS '" +
+                        table.comment +
+                        "'",
+                ),
+            )
+            downQueries.push(
+                new Query(
+                    "COMMENT ON TABLE " + this.escapePath(table) + " IS NULL",
+                ),
+            )
         }
 
         await this.executeQueries(upQueries, downQueries)
@@ -4744,7 +4758,7 @@ export class PostgresQueryRunner
 
         newComment = this.escapeComment(newComment)
         const comment = this.escapeComment(table.comment)
-        
+
         if (newComment === comment) {
             return
         }
